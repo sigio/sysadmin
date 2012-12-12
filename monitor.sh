@@ -2,8 +2,9 @@
 
 # NRPE-Alternative without active checks
 # (C) 2012 Mark Janssen, Sig-I/O Automatisering 
+# License: CC-BY-3.0 http://creativecommons.org/licenses/by/3.0/
 #
-# 2012/10/08: Version 0.5
+# 2012/10/08: Version 0.5, initial version, published on sig-io.nl
 # 2012/12/12: Version 0.6, use mutex from http://wiki.bash-hackers.org/howto/mutex
 # 2012/12/12: Version 0.7, use monitor.rc file for host-specific configuration
 
