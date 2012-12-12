@@ -1,0 +1,18 @@
+NSCA=/usr/sbin/send_nsca
+NSCACONF=/etc/send_nsca.cfg
+NSCASERVER=monitor.sig-io.nl
+HOSTNAME=hetzner.flooris.nl
+CHECKPATH=/usr/lib/nagios/plugins
+
+CHECKS=(
+'check_users|check_users -w 5 -c 10'
+'check_load|check_load -w 15,10,5 -c 30,25,20'
+'check_disk_root|check_disk -w 20% -c 10% -p /'
+'check_disk_backups|check_disk -w 20% -c 10% -p /backups'
+'check_zombie_procs|check_procs -w 5 -c 10 -s Z'
+'check_total_procs|check_procs -w 350 -c 500'
+'check_disk|check_disk -w 15% -c 10% -X selinuxfs -X tmpfs -X usbfs -X devpts -X usbfs'
+'check_swap|check_swap -w 40 -c 20'
+'check_ntp_time|check_ntp_time -H pool.ntp.org -w 5 -c 45'
+'check_linux_raid|check_linux_raid'
+)
