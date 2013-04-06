@@ -1,0 +1,60 @@
+#!/usr/bin/perl -w
+
+# Check ActiveMQ store memory usage
+# Mark Janssen -- Sig-I/O Automatisering
+# 2013/04/06
+# License: GNU GPL v2
+
+use strict;
+use warnings;
+use XML::LibXML;
+
+my $store;
+my $memory;
+my $temp;
+my $issues = 0;
+
+my $url = $ARGV[0];
+my $warn = $ARGV[1];
+my $crit = $ARGV[2];
+
+#print "URL / Levels: $url, $warn, $crit\n";
+
+my $dump = qx|/usr/bin/curl -s $url|;
+
+#print "Got data: $dump\n";
+
+my $parser = new XML::LibXML;
+my $doc =  $parser->parse_string( $dump );
+
+my $root = $doc->getDocumentElement ;
+
+my $nodes = $root->find('/html/body/table/tr/td') ;
+
+my $i = 6;
+
+while( $i < @$nodes )
+{
+	my $key = $nodes->[$i++]->toString;
+	$key =~ s/<\/td>//;
+	$key =~ s/<td>//;
+	my $value = $nodes->[$i++]->toString;
+	$value =~ s/<\/b><\/td>//;
+	$value =~ s/<td><b>//;
+#	print "Got key/value: '$key / $value'\n";
+
+	$issues++ if ( $value >= $crit );
+	$issues++ if ( $value >= $warn );
+
+	$store = $value if ( $key =~ /Store percent used/ );
+	$memory = $value if ( $key =~ /Memory percent used/ );
+	$temp = $value if ( $key =~ /Temp percent used/ );
+}
+
+my $retval = $issues;
+my $state = "OK";
+$retval = 2, $state = "CRITICAL" if ( $retval >= 2 );
+$state = "WARNING" if ( $retval == 1 );
+
+printf "%s: ActiveMQ memory usage: %d/%d/%d (store/memory/temp)\n", $state, $store, $memory, $temp;
+exit ($retval);

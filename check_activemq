@@ -1,0 +1,178 @@
+#!/usr/bin/perl
+
+# Check_ActiveMQ_Smart
+# © 2012 -- Sig-I/O Automatisering
+# Version: 2012/05/15 -- mark@sig-io.nl
+
+# For some reason, nagios doesn't like strict/warnings, though there weren't any on the commandline
+#use strict;
+#use warnings;
+use XML::Simple;
+use DateTime::Event::Cron;
+use RRD::Simple ();
+my $now = DateTime->now;
+
+# ---------------------------------------------------------- CONFIGURATION 
+# Format of configuration:
+# "QueueName" => [ "cron-spec", limit, "cron-spec", limit, ... ],
+# cronspec in default 5 number cron format: "* * * * *"
+#               minute         0-59
+#               hour           0-23
+#               day of month   1-31
+#               month          1-12 (or names, see below)
+#               day of week    0-7 (0 or 7 is Sun, or use names)
+# If multiple cron-spec's match, only the first one will be used
+# If no cron-spec's match, the queue is ignored
+# limit as integer:
+#    -1 == ignore this queue completely
+#     0 or positive == max number of items in the queue
+# Queue-name "default" is the fallback rule
+
+my %config = (
+        "ActiveMQ.DLQ"  => [
+			"* * * * *", "50" ],
+	"some.queue" => [ 
+			"40-59 20 * * *", 5000,		# Daily from 20:40
+			"* 21 * * *", 5000,		# to
+			"0-15 22 * * *", 5000,		# 22:15
+			"0-50 0 * * *", 5000,		# And after midnight
+			"* * * * *", 3000 ],
+	"some.otherQueue" => [ 
+			"40-59 20 * * *", 5000,
+			"0-30 0 * * *", 5000,
+			"* * * * *", 500 ],
+	"queue.commandLine" => [ 
+			"* * * * *", 1000, ],
+    "default"       => [ "* * * * *", "200" ],
+);
+
+my $verbose = 0;
+my $url = "http://192.168.102.200:8161/admin/xml/queues.jsp";
+$now->set_time_zone( 'Europe/Amsterdam' );
+
+# ---------------------------------------------------------- END CONFIG
+
+
+# ---------------------------------------------------------- SUBROUTINES
+sub getlimit($)
+{
+	my $found = 0;
+	my $queue = shift;
+	my $limit = 0;
+
+	if (exists $config{$queue})
+	{
+		my @configdata =  @{ $config{$queue} };
+		my $numrules = int( scalar(@configdata) / 2);
+		my $i = 0;
+		while ($i < $numrules )
+		{
+#			print "Rule $i == '" . $configdata[$i*2] . "'\n";
+			my $cron = DateTime::Event::Cron->new( $configdata[$i*2]);
+			if ( $cron->match( $now ) )
+			{
+				$limit = $configdata[$i*2 +1];
+				$found++;
+#				print "Found matching rule ($i): " . $configdata[$i*2] . " with limit $limit !\n";
+				$i = $numrules;
+			}
+			$i++;
+		}
+
+		if ( ( $queue eq "default" ) && ( $found == 0 ) )
+		{
+			# No matching rule found, not even a default rule
+			return -2;
+		}
+	}
+	else	# Try again with 'default' rules
+	{
+		if ( $queue ne "default" )
+		{
+#			print "No specific rules found for $queue, trying again with default\n";
+			# Retry resolving with default rule:
+			$limit = &getlimit("default");
+		}
+	}
+
+	# We have a rule for this queue, but it doesn't match the time,
+	# Fallback to default
+	if ( ( $found == 0 ) && ( $queue ne "default" ) )
+	{
+		return &getlimit("default");
+	}
+
+	return $limit;
+}
+
+# -------------------------------------------------------------------------- MAIN
+
+my $store;
+my $memory;
+my $temp;
+
+if ( defined $ARGV[0] )
+{
+	$url = $ARGV[0];
+}
+
+
+my $dump = qx|/usr/bin/curl -s $url|;
+my $xmldata = XMLin($dump);
+
+my $queue;
+my $data;
+my $issuecount = 0;
+my $issues = "";
+
+printf STDERR "%-50s %4s %7s %7s %4s	limit: %4d\n", "Queue Name", "Cons", "De-Q", "En-Q", "Size", "Lim" if $verbose;
+while ( ($queue, $data) = each(%{$xmldata->{queue}}) )
+{
+	my ( $consumers, $enqueue, $dequeue, $size);
+	my %stats = %{$data->{stats}};
+
+	$consumers = $stats{consumerCount};
+	$dequeue = $stats{dequeueCount};
+	$enqueue = $stats{enqueueCount};
+	$size = $stats{size};
+
+	my $rrd = RRD::Simple->new( file => "/var/rrd/$queue.rrd" );
+	if ( ! -e "/var/rrd/$queue.rrd" )
+	{
+		#printf STDERR "No rrd-file present for queue: $queue\n";
+		$rrd->create( consumers => "GAUGE",
+				dequeue => "COUNTER",
+				enqueue => "COUNTER",
+				size    => "GAUGE" );	
+	}
+
+	$rrd->update( consumers => $consumers, dequeue => $dequeue, enqueue => $enqueue, size => $size );
+
+	my $limit = &getlimit($queue);
+	printf STDERR "%-50s %4d %7d %7d %4d	limit: %4s\n", $queue, $consumers, $dequeue, $enqueue, $size, $limit if $verbose;
+	next if ( $limit == -1 );	# Skip this queue
+
+	if ( $consumers == 0 )
+	{
+		if ( $queue ne "ActiveMQ.DLQ" )	# This queue always has 0 consumers
+		{
+			$issuecount++;
+			$issues .= "$queue has NO consumers ";
+		}
+	}
+	if ( $size > $limit )
+	{
+		$issuecount++;
+		$issues .= "$queue is getting full ($size/$limit) ";
+	}
+}
+
+my $retval = $issuecount;
+my $state = "OK";
+$retval = 2, $state = "CRITICAL" if ( $retval >= 2 );
+$state = "WARNING" if ( $retval == 1 );
+$issues = "Everything reported OK" if $issues eq "";
+
+$url =~ s/xml\///;
+printf "%s: ActiveMQ: %s <A HREF='%s'>url</A>\n", $state, $issues, $url;
+exit ($retval);
