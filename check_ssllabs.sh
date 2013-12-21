@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Query the ssllabs tests for a site
 # (C) 2012 Mark Janssen, Sig-I/O Automatisering
@@ -12,7 +12,7 @@ NSCACONF=/etc/send_nsca.cfg
 NSCASERVER=your.nagios.system
 HOSTNAME=`hostname`
 
-if [[ -z ${SERVER} ]]; then
+if [ -z ${SERVER} ]; then
   SCORE=`curl -k -s "https://www.ssllabs.com/ssltest/analyze.html?d=${SITE}" | grep -A 1 "chartValue" | tr -d '\t' | grep -oE "[0-9]([0-9][0-9]|[0-9])"`
 else
   SCORE=`curl -k -s "https://www.ssllabs.com/ssltest/analyze.html?d=${SITE}&s=${SERVER}" | grep -A 1 "chartValue" | tr -d '\t' | grep -oE "[0-9]([0-9][0-9]|[0-9])"`
@@ -23,11 +23,11 @@ OK=3
 
 for PERCENTAGE in ${SCORE};
 do
-  if [[ ${PERCENTAGE} -ge 85 ]];
+  if [ ${PERCENTAGE} -ge 85 ];
   then
     OK=0
   else
-    if [[ ${PERCENTAGE} -ge 75 ]];
+    if [ ${PERCENTAGE} -ge 75 ];
     then
       OK=1;
     else
