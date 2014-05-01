@@ -27,6 +27,9 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
     trap 'echo "[$0] Killed by a signal." >&2
           exit 3' 1 2 3 15
 
+    # Send host check result
+    echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF} > /dev/null
+
     # Run actual checks
     for CHECK in "${CHECKS[@]}"
 	do
