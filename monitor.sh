@@ -32,19 +32,16 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
 
     # Run actual checks
     for CHECK in "${CHECKS[@]}"
-	do
-	CHECKNAME=`echo ${CHECK} | awk -F\| '{print $1}'`
-	CHECKCMD=`echo ${CHECK} | awk -F\| '{print $2}'`
+    do
+      CHECKNAME=`echo ${CHECK} | awk -F\| '{print $1}'`
+      CHECKCMD=`echo ${CHECK} | awk -F\| '{print $2}'`
 
-	DATA=`${CHECKPATH}/${CHECKCMD}`
-	RETVAL=$?
-	#echo "Data = $DATA"
+      DATA=`${CHECKPATH}/${CHECKCMD}`
+      RETVAL=$?
 
-	echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF}
-	done > /dev/null
-	
-else
-    # lock failed, now check if the other PID is alive
+      echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF}
+    done > /dev/null
+else # lock failed, now check if the other PID is alive
     OTHERPID="$(cat "${PIDFILE}")"
  
     if [ $? != 0 ]; then
@@ -60,6 +57,5 @@ else
         # lock is valid and OTHERPID is active - exit, we're locked!
         exit 2
     fi
- 
 fi
 
