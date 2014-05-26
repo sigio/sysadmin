@@ -12,6 +12,8 @@ nrpe alternative. Can be used for 'unreachable' hosts.
 
 Host-specific configuration (paths / checks to run) goes in monitor.rc file
 
+If you are running a MQTT server, you can have monitor.sh also report status updates and warnings to a MQTT topic. This required mosquitto_pub to be present on the system.
+
 check_ssllabs.sh
 ----------------
 
