@@ -3,6 +3,9 @@ NSCACONF=/etc/nagios/send_nsca.cfg
 NSCASERVER=your.nagios.system
 HOSTNAME=`hostname`
 CHECKPATH=/usr/lib64/nagios/plugins
+MQTTHOST=127.0.0.1
+MQTTTOPIC="nsca/monitor"
+MQTTWARNTOPIC="alert/monitor"
 
 CHECKS=(
 'check_users|check_users -w 5 -c 10'

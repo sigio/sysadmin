@@ -40,6 +40,14 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
       RETVAL=$?
 
       echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF}
+
+      if [ ${MQTTHOST} ]; then
+        mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${CHECKNAME}', 'returncode':'${RETVAL}', 'data':'${DATA}'}"
+        if [ ${RETVAL} -ne 0 ]; then
+          mosquitto_pub -h ${MQTTHOST} -t ${MQTTWARNTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${CHECKNAME}', 'returncode':'${RETVAL}', 'data':'${DATA}'}"
+        fi
+      fi
+
     done > /dev/null
 else # lock failed, now check if the other PID is alive
     OTHERPID="$(cat "${PIDFILE}")"
