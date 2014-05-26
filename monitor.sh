@@ -7,6 +7,8 @@
 # 2012/10/08: Version 0.5, initial version, published on sig-io.nl
 # 2012/12/12: Version 0.6, use mutex from http://wiki.bash-hackers.org/howto/mutex
 # 2012/12/12: Version 0.7, use monitor.rc file for host-specific configuration
+# 2014/05/01: Version 0.71, send host 'check' result
+# 2014/05/26: Version 0.8, optionally publish to mqtt 
 
 # Run some nagios checks, and report their results using nsca
 
@@ -29,6 +31,9 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
 
     # Send host check result
     echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF} > /dev/null
+    if [ ${MQTTHOST} ]; then
+        mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${HOSTNAME}', 'returncode':'0', 'data':'Checked by $0'}"
+    fi
 
     # Run actual checks
     for CHECK in "${CHECKS[@]}"
