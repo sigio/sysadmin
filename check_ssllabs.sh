@@ -18,7 +18,7 @@ else
   URL="https://www.ssllabs.com/ssltest/analyze.html?d=${SITE}&s=${SERVER}"
 fi
 
-SCORE=`curl -k -s "${URL}" | grep rating_g | tr '<>/' '   ' | awk '{print $6}'`
+SCORE=`curl -k -s "${URL}" | grep -A1 rating_g | tail -1 | awk '{print $1}' | tr -d '\r\n'`
 
 OK=3
 
