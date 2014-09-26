@@ -1,0 +1,204 @@
+#!/usr/bin/perl -w
+#
+# check_ssl_certificate
+#   Nagios script to check ssl certificate expirations
+#
+# Copyright (c) 2006-2008 David Alden <alden@math.ohio-state.edu>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+#
+#
+# Changes:
+#   26/09/2014 sigio <mark@sig-io.nl>
+#      - Report CRITICAL on expired certificates (was OK)
+#
+#   10/30/2008 dja <alden@math.ohio-state.edu>
+#      - fixed a bug which caused it to not deal with certs that expire
+#        on a single digit day (thanks to Christian Sava, Kyle Smith &
+#        Raphael Berlamont)
+#
+#   10/09/2007 dja <alden@math.ohio-state.edu>
+#      - fixed a bug which caused it to improperly report expired certs
+#        (thanks to Hassan Alusesi for pointing this out)
+#      - no longer use temporary files or Date::Manip
+#        (thanks to tommybobbins on NagiosExchange)
+#      - added the printing of the Common Name (CN) if verbose is specified
+#        (thanks to mp72 on NagiosExchange)
+#
+#
+# Description:
+#   This script will check if an SSL certificate is going to expire.  For
+# example, to check the IMAP certificate on an imaps port:
+#
+# check_ssl_certificate -H 1.1.1.1 -p 993
+#
+#
+# Installation:
+#   Edit this script, replacing the line:
+#       use lib "/usr/lib/nagios/plugins";
+#   with the path to your nagios plugins directory (where utils.pm is
+#   located).  Also edit the line:
+#       my $openssl = "/usr/bin/openssl";
+#   with the path to your openssl binary.  Then copy the script into
+#   your nagios plugins directory.
+#
+#
+use strict;
+use Time::Local;
+use Getopt::Long;
+use lib "/usr/lib64/nagios/plugins";
+#use lib "/usr/lib/nagios/plugins/scripts/";
+use utils qw(%ERRORS &print_revision &support &usage);
+
+my $PROGNAME="check_ssl_certificates";
+my $REVISION="1.2";
+
+#
+$ENV{PATH}="/usr/sbin:/usr/bin:/bin";
+
+#
+my $openssl = "/usr/bin/openssl";
+
+my $critical = 3;
+my $help;
+my $host;
+my $port = 443;
+my $additional = '';
+my $verbose;
+my $version;
+my $warning = 15;
+
+#
+my %months = ('Jan' => 0, 'Feb' => 1, 'Mar' => 2, 'Apr' => 3, 'May' => 4,
+	      'Jun' => 5, 'Jul' => 6, 'Aug' => 7, 'Sep' => 8, 'Oct' => 9,
+	      'Nov' => 10, 'Dec' => 11);
+
+#
+Getopt::Long::Configure('bundling');
+if (GetOptions(
+	       "a=s" => \$additional,
+	       "c:s" => \$critical,
+	       "h"   => \$help,
+	       "H:s" => \$host,
+	       "o=s" => \$openssl,
+	       "p=i" => \$port,
+	       "v"   => \$verbose,
+	       "V"   => \$version,
+	       "w:s" => \$warning,
+	      ) == 0) {
+
+  print_usage();
+  exit $ERRORS{'UNKNOWN'}
+}
+
+if ($version) {
+  print_revision($PROGNAME, "\$Revision: $REVISION \$");
+  exit $ERRORS{'OK'};
+}
+
+if ($help) {
+  print_help();
+  exit $ERRORS{'OK'};
+}
+
+if (! utils::is_hostname($host)) {
+  usage("");
+  exit $ERRORS{'UNKNOWN'};
+}
+
+open(OPENSSL, "$openssl s_client -connect $host:$port $additional < /dev/null 2>&1 | $openssl x509 -enddate -noout |") ||
+  die "unable to open $openssl: $!";
+
+my $date;
+while (<OPENSSL>) {
+  if ($_ =~ /^notAfter=(.*)/) {
+    $date = $1;
+    chomp($date);
+#    last;
+  }
+}
+close(OPENSSL);
+
+$date =~ s/ +/ /g;
+
+my ($month, $day, $hour, $min, $sec, $year, $tz) = split(/[\s+|:]/, $date);
+#print "m=$month, d=$day, h=$hour, m=$min, s=$sec, y=$year, z=$tz\n";
+
+my $daysLeft = int((timegm($sec, $min, $hour, $day, $months{$month}, $year - 1900) - time()) / 86400);
+
+my $cn="this certificate";
+if ($verbose) {
+
+  open(OPENSSL, "$openssl s_client -connect $host:$port $additional < /dev/null 2>&1 |") ||
+    die "unable to open $openssl: $!";
+
+  while (<OPENSSL>) {
+    next unless $_ =~ /Certificate chain/;
+
+    while (<OPENSSL>) {
+      next unless $_ =~ /CN=(.*)/;
+      ($cn) = split(/\//, $1);
+      $cn .= "[$host]" if ($cn ne $host);
+      last;
+    }
+  }
+}
+
+if ($daysLeft < 0) {
+  print "$PROGNAME: CRITICAL - $cn expired " . abs($daysLeft) . " day(s) ago.\n";
+  exit $ERRORS{'CRITICAL'};
+} elsif ($daysLeft <= $critical) {
+  print "$PROGNAME: CRITICAL - only $daysLeft day(s) left for $cn.\n";
+  exit $ERRORS{'CRITICAL'};
+} elsif ($daysLeft <= $warning) {
+  print "$PROGNAME: WARNING - only $daysLeft day(s) left for $cn.\n";
+  exit $ERRORS{'WARNING'};
+} elsif ($verbose) {
+  print "$PROGNAME: $daysLeft day(s) left for $cn.\n";
+}
+
+exit $ERRORS{'OK'};
+
+sub print_help {
+  print_revision($PROGNAME, "\$Revision: $REVISION \$");
+  print "Copyright (c) 2006 David Alden
+
+Check if an SSL certificate is close to expiring
+
+";
+
+  print_usage();
+
+  print "
+-a <add>   add the text to the openssl line, used for checking the smtp ssl
+           certificate with starttls (\"-a '-starttls smtp'\")
+-c <num>   exit with CRITICAL status if number of days left is less than <num>
+-h         show this help script
+-H <host>  check the certificate on the indicated host
+-o <path>  path to openssl binary
+-p <port>  check the certificate on the specified port
+-w <num>   exit with WARNING status if number of days left is less than <num>
+-v         show the number of days left
+-V         show version and license information
+";
+
+  support();
+}
+
+
+sub print_usage {
+  print "Usage: $PROGNAME -H <host> [-p <port>] [-c <low>:<high>] [-w <low>:<high>]\n";
+  return();
+}
