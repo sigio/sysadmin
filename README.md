@@ -21,3 +21,10 @@ Check Qualys ssllabs.com site for score/configuration of a https certificate
 Trigger nagios warning/error when score drops below 85.
 Don't run more then 1x per hour. Run the reset_ssllabs.sh script no more then 1x per day.
 It can take up to 5 minutes between a reset and a cache-update.
+
+check_ssd_attribs.pl
+--------------------
+
+Nagios/Icinga check-script to monitor various SMART attributes on (SSD) drives. Will calculate
+the percentage of TBW (total bytes written), and monitor various other attributes used by
+(for example) Samsung 840 Pro ssd's. 
