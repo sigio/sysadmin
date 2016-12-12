@@ -47,13 +47,13 @@ do
                 if [[ ( "$datum" != "$TODAY" ) && ( "$datum" != "$YESTERDAY" ) ]]; then
                         WARNTXT="${WARNTXT}Backup of host: $host is STALE (date: $timestamp) "
                         let WARN=$WARN+1
-                        echo "$host     ninjabackup     1       Backup is STALE ($timestamp)\n" | ${SEND_NSCA} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
+                        echo "$host	ninjabackup	1	Backup is STALE ($timestamp)\n" | ${SEND_NSCA} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
                 elif [[ "$state" != "SUCCESS" ]]; then
                         WARNTXT="${WARNTXT}Backup of host: $host finished at '$timestamp' with state '$state' "
-                        echo "$host     ninjabackup     2       Backup ${state}\n" | ${SEND} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
+                        echo "$host	ninjabackup	2	Backup ${state}\n" | ${SEND_NSCA} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
                         let WARN=$WARN+1
                 else
-                        echo "$host     ninjabackup     0       Backup ${state}\n" | ${SEND} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
+                        echo "$host	ninjabackup	0	Backup ${state}\n" | ${SEND_NSCA} -H ${NSCAHOST} -c ${NSCA_CONF} 2>&1 > /dev/null
 
                 fi
         fi
