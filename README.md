@@ -28,3 +28,12 @@ check_ssd_attribs.pl
 Nagios/Icinga check-script to monitor various SMART attributes on (SSD) drives. Will calculate
 the percentage of TBW (total bytes written), and monitor various other attributes used by
 (for example) Samsung 840 Pro ssd's. 
+
+mon_maria.pl
+------------
+
+Monitoring script for galera clusters, check correct values in the following settings:
+  - wsrep_local_state
+  - wsrep_on
+  - wsrep_cluster_size
+And the option to force a node offline manually. This script can be used as a loadbalancer check script to judge the health of the cluster-node.
