@@ -1,0 +1,149 @@
+#!/bin/bash
+#
+# Usage: .//check_system_pp
+#
+# Description:
+# This plugin determines whether the server
+# is running properly. It will check the following:
+# * Are all required processes running?
+# * Are all the required TCP/IP ports open?
+#
+# Created:      27.01.2006 (FBA)
+#
+# Changes:      28.01.2006      added yellow check (FBA)
+#               29.01.2006      change "px -ef" to "ps -ax" (FBA). Problems with long arguments
+#               31.01.2006      added all OK Status with all procs and ports (FBA)
+#               15.07.2006      change "ps -ax" to "ps ax" (FBA). Also problems with long arguments under RedHat 3/4
+#               17.07.2006      Plugin rewrite and bugfixes (Magnus Glantz)
+#               19.07.2006      Removed utils.sh dependency.
+#               10.06.2017      Sig-IO: Read PROCLIST and PORTLIST from a directory list
+#
+##################################################################################
+#
+# Processes to check (create an empty file with the name to check in these directories)
+PROCLIST_RED_DIR="./check_system_pp.rc/proc-red"
+PROCLIST_YELLOW_DIR="./check_system_pp.rc/proc-yellow"
+
+# Ports to check (create an empty file with the portnumer as name in this directory)
+PORTLIST_DIR="./check_system_pp.rc/ports"
+
+PROCLIST_RED=`ls ${PROCLIST_RED_DIR} | tr '\n' ' '`
+PROCLIST_YELLOW=`ls ${PROCLIST_YELLOW_DIR} | tr '\n' ' '`
+PORTLIST=`ls ${PORTLIST_DIR}`
+
+##################################################################################
+
+PATH="/usr/bin:/usr/sbin:/bin:/sbin"
+
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+STATE_DEPENDENT=4
+
+print_gpl() {
+    echo "This program is free software; you can redistribute it and/or modify"
+    echo "it under the terms of the GNU General Public License as published by"
+    echo "the Free Software Foundation; either version 2 of the License, or"
+    echo "(at your option) any later version."
+    echo ""
+    echo "This program is distributed in the hope that it will be useful,"
+    echo "but WITHOUT ANY WARRANTY; without even the implied warranty of"
+    echo "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
+    echo "GNU General Public License for more details."
+    echo ""
+    echo "You should have received a copy of the GNU General Public License"
+    echo "along with this program; if not, write to the Free Software"
+    echo "Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA"
+}
+
+print_help(){
+        echo ""
+        echo "System process and port check script for Nagios."
+	echo "Tested on RHE3/4, Fedora 4, Solaris 9"
+	echo ""
+        echo "Usage: ./check_system_pp"
+        echo "Website: http://www.nagiosexchange.org"
+	echo ""
+	print_gpl
+}
+
+while test -n "$1"
+do
+        case "$1" in
+          *) print_help; exit $STATE_OK;;
+        esac
+done
+
+check_processes_red()
+{
+        PROCESS="0"
+        ERROR_PROCS=""
+        for PROC in `echo $PROCLIST_RED`; do
+        if [ `ps -ef | grep $PROC | grep -v grep | wc -l` -lt 1 ]; then
+                        PROCESS=1
+                        ERROR_PROCS="$ERROR_PROCS""$PROC ";
+        fi
+        done
+
+        if [ $PROCESS -eq "1" ]; then
+                exit_red=$STATE_CRITICAL
+	elif [ $PROCESS -eq "0" ]; then
+		exit_red=$STATE_OK
+        fi
+}
+
+check_processes_yellow()
+{
+        PROCESS="0"
+        WARNING_PROCS=""
+        for PROC in `echo $PROCLIST_YELLOW`; do
+        if [ `ps -ef | grep $PROC | grep -v grep | wc -l` -lt 1 ]; then
+                        PROCESS=1
+                        WARNING_PROCS="$WARNING_PROCS""$PROC ";
+        fi
+        done
+
+        if [ $PROCESS -eq "1" ]; then
+                exit_yellow=$STATE_WARNING
+        elif [ $PROCESS -eq "0" ]; then
+		exit_yellow=$STATE_OK
+	fi
+}
+
+check_ports()
+{
+        PORTS="0"
+        ERROR_PORTS=""
+        for NUM in `echo $PORTLIST`; do
+                if [ `netstat -an | grep LISTEN | grep $NUM | grep -v grep | wc -l` -lt 1 ]; then
+                        PORTS=1
+                        ERROR_PORTS="$ERROR_PORTS""$NUM ";
+                fi
+        done
+
+        if [ $PORTS -eq "1" ]; then
+                exit_ports=$STATE_CRITICAL
+        elif [ $PORTS -eq "0" ]; then
+		exit_ports=$STATE_OK
+	fi
+}
+
+check_processes_red
+check_ports
+check_processes_yellow
+
+final_exit=`expr $exit_ports + $exit_red + $exit_yellow`
+
+if [ $final_exit -eq "0" ]; then
+	echo "SYSTEM OK - All monitored resources OK. Processes: $PROCLIST_RED $PROCLIST_YELLOW. Ports: $PORTLIST."
+	exitstatus=$STATE_OK
+elif [ $final_exit -eq "1" ]; then
+        echo "SYSTEM WARNING - Processes DOWN. ($WARNING_PROCS)."
+	exitstatus=$STATE_WARNING
+elif [ $final_exit -ge "1" ]; then
+	echo "SYSTEM CRITICAL - Resources DOWN! Processes: $ERROR_PROCS $WARNING_PROCS. Ports: $ERROR_PORTS"
+	exitstatus=$STATE_CRITICAL
+fi
+
+exit $exitstatus
