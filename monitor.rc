@@ -1,6 +1,7 @@
 NSCA=/usr/sbin/send_nsca
 NSCACONF=/etc/nagios/send_nsca.cfg
 NSCASERVER=your.nagios.system
+NSCAPORT=5667
 HOSTNAME=`hostname`
 CHECKPATH=/usr/lib64/nagios/plugins
 MQTTHOST=127.0.0.1

@@ -9,6 +9,7 @@
 # 2012/12/12: Version 0.7, use monitor.rc file for host-specific configuration
 # 2014/05/01: Version 0.71, send host 'check' result
 # 2014/05/26: Version 0.8, optionally publish to mqtt 
+# 2017/06/10: Version 0.9, ability to specify port for NSCA receiver
 
 # Run some nagios checks, and report their results using nsca
 
@@ -30,7 +31,7 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
           exit 3' 1 2 3 15
 
     # Send host check result
-    echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF} > /dev/null
+    echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -p {NSCAPORT} -c ${NSCACONF} > /dev/null
     if [ ${MQTTHOST} ]; then
         mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${HOSTNAME}', 'returncode':'0', 'data':'Checked by $0'}"
     fi
@@ -44,7 +45,7 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
       DATA=`${CHECKPATH}/${CHECKCMD}`
       RETVAL=$?
 
-      echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -c ${NSCACONF}
+      echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -p {NSCAPORT} -c ${NSCACONF}
 
       if [ ${MQTTHOST} ]; then
         mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${CHECKNAME}', 'returncode':'${RETVAL}', 'data':'${DATA}'}"
