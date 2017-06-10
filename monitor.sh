@@ -31,7 +31,7 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
           exit 3' 1 2 3 15
 
     # Send host check result
-    echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -p {NSCAPORT} -c ${NSCACONF} > /dev/null
+    echo "${HOSTNAME}	0	Checked by $0" | ${NSCA} -H ${NSCASERVER} -p ${NSCAPORT} -c ${NSCACONF} > /dev/null
     if [ ${MQTTHOST} ]; then
         mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${HOSTNAME}', 'returncode':'0', 'data':'Checked by $0'}"
     fi
@@ -45,7 +45,7 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
       DATA=`${CHECKPATH}/${CHECKCMD}`
       RETVAL=$?
 
-      echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -p {NSCAPORT} -c ${NSCACONF}
+      echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -p ${NSCAPORT} -c ${NSCACONF}
 
       if [ ${MQTTHOST} ]; then
         mosquitto_pub -h ${MQTTHOST} -t ${MQTTTOPIC} -m "{'host':'${HOSTNAME}', 'check':'${CHECKNAME}', 'returncode':'${RETVAL}', 'data':'${DATA}'}"
