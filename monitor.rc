@@ -4,6 +4,7 @@ NSCASERVER=your.nagios.system
 NSCAPORT=5667
 HOSTNAME=`hostname`
 CHECKPATH=/usr/lib64/nagios/plugins
+TIMEOUT=10
 MQTTHOST=127.0.0.1
 MQTTTOPIC="nsca/monitor"
 MQTTWARNTOPIC="alert/monitor"

@@ -19,6 +19,13 @@
 LOCKDIR=/var/run/monitor
 PIDFILE=${LOCKDIR}/pid
 
+if [ -n "$TIMEOUT" ];
+then
+    PREPEND="/usr/bin/timeout ${TIMEOUT} "
+else
+    PREPEND=""
+fi
+
 # Acquire lock...
 if mkdir "${LOCKDIR}" &>/dev/null; then
     trap 'ECODE=$?;
@@ -42,7 +49,7 @@ if mkdir "${LOCKDIR}" &>/dev/null; then
       CHECKNAME=`echo ${CHECK} | awk -F\| '{print $1}'`
       CHECKCMD=`echo ${CHECK} | awk -F\| '{print $2}'`
 
-      DATA=`${CHECKPATH}/${CHECKCMD}`
+      DATA=`${PREPEND}${CHECKPATH}/${CHECKCMD}`
       RETVAL=$?
 
       echo "${HOSTNAME}	${CHECKNAME}	${RETVAL}	${DATA}" | ${NSCA} -H ${NSCASERVER} -p ${NSCAPORT} -c ${NSCACONF}
