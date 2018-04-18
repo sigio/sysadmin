@@ -3,8 +3,7 @@
 # Usage: .//check_system_pp
 #
 # Description:
-# This plugin determines whether the server
-# is running properly. It will check the following:
+# This plugin determines whether the server is running properly. It will check the following:
 # * Are all required processes running?
 # * Are all the required TCP/IP ports open?
 #
@@ -21,11 +20,11 @@
 ##################################################################################
 #
 # Processes to check (create an empty file with the name to check in these directories)
-PROCLIST_RED_DIR="./check_system_pp.rc/proc-red"
-PROCLIST_YELLOW_DIR="./check_system_pp.rc/proc-yellow"
+PROCLIST_RED_DIR="proc-red"
+PROCLIST_YELLOW_DIR="proc-yellow"
 
 # Ports to check (create an empty file with the portnumer as name in this directory)
-PORTLIST_DIR="./check_system_pp.rc/ports"
+PORTLIST_DIR="ports"
 
 PROCLIST_RED=`ls ${PROCLIST_RED_DIR} | tr '\n' ' '`
 PROCLIST_YELLOW=`ls ${PROCLIST_YELLOW_DIR} | tr '\n' ' '`
