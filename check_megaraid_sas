@@ -32,6 +32,9 @@
 # 2017/10/03: Mark Janssen -- Sig-I/O Automatisering: Added -v option for verbose logging
 # 2018/04/18: Mark Janssen -- Sig-I/O Automatisering: Handle JBOD disks
 # 2018/04/18: Mark Janssen -- Sig-I/O Automatisering: Add -O option to ignore 'other' errors
+# 
+# KNOWN BUGS:
+# - Non-consecutive logical-disk numbers cause problems (LD0, LD3)
 
 use strict;
 use Getopt::Std;
