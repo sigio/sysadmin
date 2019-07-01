@@ -52,7 +52,7 @@ sub process_data($) {
 
     my $hname = $q->param('hostname');
     my $cname = $q->param('checkname');
-    my $res = $q->param('result');
+    my $res = $q->param('retval');
     my $edata = $q->param('extradata');
     my $now = time();
 
