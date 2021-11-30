@@ -3,8 +3,6 @@ sysadmin
 
 System-admin scripts
 
-test
-
 monitor.sh and monitor.rc
 -------------------------
 
